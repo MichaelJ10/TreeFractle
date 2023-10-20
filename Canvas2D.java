@@ -2,7 +2,10 @@ import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
 
 public class Canvas2D extends Canvas {
     private BufferedImage buffer;
@@ -32,6 +35,13 @@ public class Canvas2D extends Canvas {
     }
 
     public void draw() {
-        super.getGraphics().drawImage(buffer, 0, 0, buffer.getWidth(), buffer.getHeight(), null);
+        super.getGraphics().drawImage(buffer, 0, 0, getWidth(), getHeight(), null);
+    }
+
+    public Image getImage() {
+        ColorModel cm = buffer.getColorModel();
+        boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+        WritableRaster raster = buffer.copyData(null);
+        return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
     }
 }
