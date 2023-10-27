@@ -45,18 +45,32 @@ public abstract class Giffer {
 
         gifWriter.setOutput(ios);
         gifWriter.prepareWriteSequence(null);
+        long start = System.currentTimeMillis();
         for (int i = 0; i < filenames.length; i++) {
             BufferedImage img = ImageIO.read(new File(filenames[i]));
             IIOImage temp = new IIOImage(img, null, metadata);
             gifWriter.writeToSequence(temp, null);
             String str = "|";
             for (int j = 0; j < 25; j++)
-                str += ((float) i / filenames.length * 25 < j ? " " : "#");
-            str += "| (" + (i + 1) + " / " + filenames.length + ") (" + PF.format((double) (i + 1) / filenames.length) + ")\r";
+                str += (Math.floor((float) i / filenames.length * 25) < j ? " " : "=");
+            long elapsed = System.currentTimeMillis() - start;
+            long millisPerFrame = (elapsed / (i + 1));
+            long Queued = (filenames.length - 1 - i);
+            str += "| (" + (i + 1) + " / " + filenames.length + ") (" + PF.format((double) (i + 1) / filenames.length) + ") (" + getTime(Queued * millisPerFrame) + ")               \r";
             System.out.print(str);
         }
-        System.out.println();
+        long totalTime = (System.currentTimeMillis() - start);
+        System.out.println("\nTotal Time: " + getTime(totalTime));
         gifWriter.endWriteSequence();
+    }
+
+    private static String getTime(long time) {
+        long millis = time % 1000;
+        long second = (time / 1000) % 60;
+        long minute = (time / (1000 * 60)) % 60;
+        long hour = (time / (1000 * 60 * 60)) % 24;
+
+        return String.format("%02d:%02d:%02d.%d", hour, minute, second, millis);
     }
 
     // Retrieve gif writer
@@ -132,20 +146,5 @@ public abstract class Giffer {
         root.appendChild(node);
 
         return node;
-    }
-
-    public static void main(String[] args) {
-        String[] arr = new String[720];
-        for(int i = 0; i < 720; i++) {
-            arr[i] = "Images/frame" + i + ".png";
-        }
-        File outputFile = new File("render.gif");
-        try {
-            outputFile.delete();
-            outputFile.createNewFile();
-            Giffer.generateFromFiles(arr, outputFile.getPath(), 21, true);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }
