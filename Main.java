@@ -27,7 +27,7 @@ public class Main extends JFrame {
     };
 
     public Main() {
-        setVisible(true);
+        setVisible(!HD);
         setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocation(50, 50);
@@ -119,7 +119,7 @@ public class Main extends JFrame {
         animation.animate();
         if(!animation.get.outputToList()) setVisible(false);
         animation.render(15);
-        if(animation.get.frameRate() > 0) timer.setDelay(animation.get.frameRate());
+        if(animation.get.frameRate() > 0) timer.setDelay((int) Math.round(1000 / animation.get.frameRate()));
         System.out.println("\nTotal Time Spent: " + getTime(System.currentTimeMillis() - start));
         if(animation.get.hasRenderFrames()) timer.start();
         else dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));

@@ -7,17 +7,19 @@ import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.NumberFormat;
 
 public class Animation {
     private final static NumberFormat PF = NumberFormat.getPercentInstance();
     private double centerPointX, centerPointY, scale, startLength, angle, decrementer, startHue,
             startStroke, endstroke;
-    private int numRepotitions, numframes, frameRate;
+    private int numRepotitions, numFrames;
+    private double frameRate;
     private boolean drawOnChange = false, outputToList = true, drawRendering = true, HD = false;
     private ArrayList<Branch> branches = new ArrayList<Branch>();
     private ArrayList<Image> frames = new ArrayList<Image>();
-    private ArrayList<String> imgFileNames = new ArrayList<String>();
+    private int numRenderedFrames = 0;
     private Canvas2D canvas;
     public Set set = new Set();
     public Get get = new Get();
@@ -45,24 +47,44 @@ public class Animation {
         set.startStroke(startStroke);
         set.endstroke(endstroke);
         set.canvas(canvas);
+        File renderFile = new File("render.mp4");
+        if(renderFile.exists()) renderFile.delete();
+        File imagesFolder = new File("Images");
+        if(!imagesFolder.isDirectory())
+            imagesFolder.delete();
+        if(!imagesFolder.exists())
+            imagesFolder.mkdirs();
+        for (File file : imagesFolder.listFiles()) 
+            file.delete();
     }
 
     public void render(double lengthSec) {
-        if(outputToList) {
-            frameRate = (int) (float) (1000 / (numframes / lengthSec));
-        }else {
-            String[] arr = new String[imgFileNames.size()];
-            imgFileNames.toArray(arr);
-            File outputFile = new File("render.gif");
+        frameRate = numFrames / lengthSec;
+        if(!outputToList) {
             try {
-                outputFile.delete();
-                outputFile.createNewFile();
-                Giffer.generateFromFiles(arr, outputFile.getPath(), (int) (float) (100 / (numframes / lengthSec)), true);
-            } catch (Exception e) {
+                String[] command = {"ffmpeg", "-framerate", "" + frameRate, "-i", "Images/frame%d.jpg", "render.mp4"};
+
+                Thread.sleep(100);
+                
+                ProcessBuilder processBuilder = new ProcessBuilder(command);
+                processBuilder.redirectErrorStream(true);
+            
+                Process process = processBuilder.start();
+                InputStream output = process.getInputStream();
+                
+                while(process.isAlive()) {
+                    while (output.available() > 0) {
+                        System.out.print((char) output.read());
+                    }
+                }
+                
+                Thread.sleep(100);
+                
+                for (File file : new File("Images").listFiles()) 
+                    file.delete();
+                
+            }catch (IOException | InterruptedException e) {
                 e.printStackTrace();
-            }
-            for(String fileName : imgFileNames) {
-                (new File(fileName)).delete();
             }
         }
     }
@@ -88,9 +110,9 @@ public class Animation {
             frames.add(canvas.getImage());
         else {
             try {
-                String str = "Images/frame" + imgFileNames.size() + ".png";
-                imgFileNames.add(str);
-                ImageIO.write((BufferedImage) canvas.getImage(), "png", new File(str));
+                numRenderedFrames++;
+                String str = "Images/frame" + numRenderedFrames + ".jpg";
+                ImageIO.write((BufferedImage) canvas.getImage(), "jpg", new File(str));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -121,17 +143,17 @@ public class Animation {
         if(!HD) frameCount /= 2;
         if(frameCount == 0) frameCount = 1;
         if(frameCount <= 0) return false;
-        numframes = frameCount;
-        angleArr = new double[numframes];
-        centerPointXArr = new double[numframes];
-        centerPointYArr = new double[numframes];
-        decrementerArr = new double[numframes];
-        endstrokeArr = new double[numframes];
-        scaleArr = new double[numframes];
-        startHueArr = new double[numframes];
-        startLengthArr = new double[numframes];
-        startStrokeArr = new double[numframes];
-        for(int i = 0 ; i < numframes; i++) {
+        numFrames = frameCount;
+        angleArr = new double[numFrames];
+        centerPointXArr = new double[numFrames];
+        centerPointYArr = new double[numFrames];
+        decrementerArr = new double[numFrames];
+        endstrokeArr = new double[numFrames];
+        scaleArr = new double[numFrames];
+        startHueArr = new double[numFrames];
+        startLengthArr = new double[numFrames];
+        startStrokeArr = new double[numFrames];
+        for(int i = 0 ; i < numFrames; i++) {
             angleArr[i] = angle;
             centerPointXArr[i] = get.centerPointX();
             centerPointYArr[i] = get.centerPointY();
@@ -150,7 +172,7 @@ public class Animation {
             startFrame /= 2;
             endFrame /= 2;
         }
-        endFrame = Math.min(endFrame, numframes);
+        endFrame = Math.min(endFrame, numFrames);
         startFrame = Math.max(startFrame, 0);
         endFrame--;
         endFrame = Math.max(endFrame, 0);
@@ -192,15 +214,17 @@ public class Animation {
         boolean hasDrawOnChange = drawOnChange;
         drawOnChange = false;
         long start = System.currentTimeMillis();
-        for(int i = 0; i < numframes; i++) {
+        for(int i = 0; i <= numFrames; i++) {
             String str = "|";
             for (int j = 0; j < 25; j++)
-                str += (Math.floor((float) i / numframes * 25) < j ? " " : "=");
+                str += (Math.floor((float) i / numFrames * 25) < j ? " " : "=");
             long elapsed = System.currentTimeMillis() - start;
             long millisPerFrame = (elapsed / (i + 1));
-            long Queued = (numframes - 1 - i);
-            str += "| (" + (i + 1) + " / " + numframes + ") (" + PF.format((double) (i + 1) / numframes) + ") (" + getTime(Queued * millisPerFrame) + ")             \r";
+            long Queued = (numFrames - 1 - i);
+            str += "| (" + (i + 1) + " / " + numFrames + ") (" + PF.format((double) (Math.min(i, numFrames)) / numFrames) + ") (" + getTime(Math.max(Queued * millisPerFrame, 0)) + ")             \r";
             System.out.print(str);
+            if(i == numFrames)
+                break;
             set.angle(angleArr[i]);
             set.centerPointX(centerPointXArr[i]);
             set.centerPointY(centerPointYArr[i]);
@@ -404,7 +428,7 @@ public class Animation {
             return outputToList;
         }
 
-        public int frameRate() {
+        public double frameRate() {
             return frameRate;
         }
     }
